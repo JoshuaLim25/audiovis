@@ -1,0 +1,143 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+env:
+  BUILD_TYPE: Release
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        compiler: [gcc, clang]
+        include:
+          - compiler: gcc
+            cc: gcc-13
+            cxx: g++-13
+          - compiler: clang
+            cc: clang-17
+            cxx: clang++-17
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            ninja-build \
+            libportaudio2 \
+            libportaudio-dev \
+            libfftw3-dev \
+            libfftw3-single3 \
+            libncursesw5-dev \
+            ${{ matrix.compiler == 'gcc' && 'g++-13' || 'clang-17' }}
+
+      - name: Configure CMake
+        env:
+          CC: ${{ matrix.cc }}
+          CXX: ${{ matrix.cxx }}
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=${{ env.BUILD_TYPE }} \
+            -DAUDIOVIS_BUILD_TESTS=ON \
+            -DAUDIOVIS_ENABLE_SANITIZERS=OFF \
+            -DAUDIOVIS_USE_TERMINAL=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Run tests
+        working-directory: build
+        run: ctest --output-on-failure --parallel
+
+  static-analysis:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            ninja-build \
+            clang-17 \
+            clang-tidy-17 \
+            libportaudio-dev \
+            libfftw3-dev \
+            libncursesw5-dev
+
+      - name: Configure CMake
+        env:
+          CC: clang-17
+          CXX: clang++-17
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DCMAKE_EXPORT_COMPILE_COMMANDS=ON \
+            -DAUDIOVIS_BUILD_TESTS=OFF
+
+      - name: Run clang-tidy
+        run: |
+          find src include -name '*.cpp' -o -name '*.hpp' | \
+            xargs clang-tidy-17 -p build \
+              --warnings-as-errors='*' \
+              --checks='-*,bugprone-*,modernize-*,performance-*,readability-*,cppcoreguidelines-*,-modernize-use-trailing-return-type,-readability-magic-numbers,-cppcoreguidelines-avoid-magic-numbers'
+
+  format-check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install clang-format
+        run: sudo apt-get install -y clang-format-17
+
+      - name: Check formatting
+        run: |
+          find src include tests -name '*.cpp' -o -name '*.hpp' | \
+            xargs clang-format-17 --dry-run --Werror
+
+  sanitizer-build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y \
+            cmake \
+            ninja-build \
+            clang-17 \
+            libportaudio-dev \
+            libfftw3-dev \
+            libncursesw5-dev
+
+      - name: Configure with sanitizers
+        env:
+          CC: clang-17
+          CXX: clang++-17
+        run: |
+          cmake -B build -G Ninja \
+            -DCMAKE_BUILD_TYPE=Debug \
+            -DAUDIOVIS_BUILD_TESTS=ON \
+            -DAUDIOVIS_ENABLE_SANITIZERS=ON \
+            -DAUDIOVIS_USE_TERMINAL=ON
+
+      - name: Build
+        run: cmake --build build --parallel
+
+      - name: Run tests with sanitizers
+        working-directory: build
+        env:
+          ASAN_OPTIONS: detect_leaks=1:abort_on_error=1
+          UBSAN_OPTIONS: print_stacktrace=1:abort_on_error=1
+        run: ctest --output-on-failure
