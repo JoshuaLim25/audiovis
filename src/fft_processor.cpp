@@ -13,7 +13,7 @@ namespace audiovis {
 /// Internal FFTW data structures (hidden from header).
 struct FFTProcessor::FFTWData {
     fftwf_plan plan = nullptr;
-    float* input = nullptr;       // FFTW-aligned input buffer
+    float* input = nullptr;           // FFTW-aligned input buffer
     fftwf_complex* output = nullptr;  // FFTW-aligned output buffer
 
     ~FFTWData() {
@@ -30,9 +30,7 @@ struct FFTProcessor::FFTWData {
 };
 
 FFTProcessor::FFTProcessor(const FFTConfig& config)
-    : config_{config}
-    , fftw_{std::make_unique<FFTWData>()} {
-
+    : config_{config}, fftw_{std::make_unique<FFTWData>()} {
     if ((config_.fft_size & (config_.fft_size - 1)) != 0) {
         throw std::invalid_argument("FFT size must be a power of two");
     }
@@ -44,10 +42,7 @@ FFTProcessor::FFTProcessor(const FFTConfig& config)
 FFTProcessor::~FFTProcessor() = default;
 
 FFTProcessor::FFTProcessor(FFTProcessor&& other) noexcept
-    : config_{other.config_}
-    , fftw_{std::move(other.fftw_)}
-    , window_{std::move(other.window_)} {
-}
+    : config_{other.config_}, fftw_{std::move(other.fftw_)}, window_{std::move(other.window_)} {}
 
 FFTProcessor& FFTProcessor::operator=(FFTProcessor&& other) noexcept {
     if (this != &other) {
@@ -76,12 +71,7 @@ void FFTProcessor::allocate_buffers() {
 
     // Create plan (FFTW_MEASURE is slower to plan but faster to execute)
     // Use FFTW_ESTIMATE for faster startup at cost of slightly slower FFT
-    fftw_->plan = fftwf_plan_dft_r2c_1d(
-        n,
-        fftw_->input,
-        fftw_->output,
-        FFTW_ESTIMATE
-    );
+    fftw_->plan = fftwf_plan_dft_r2c_1d(n, fftw_->input, fftw_->output, FFTW_ESTIMATE);
 
     if (fftw_->plan == nullptr) {
         throw std::runtime_error("Failed to create FFTW plan");
@@ -116,20 +106,18 @@ void FFTProcessor::compute_window() {
         case WindowFunction::Blackman:
             for (std::size_t i = 0; i < n; ++i) {
                 const auto x = static_cast<float>(i) / static_cast<float>(n - 1);
-                window_[i] = 0.42f
-                           - 0.5f * std::cos(2.0f * pi * x)
-                           + 0.08f * std::cos(4.0f * pi * x);
+                window_[i] =
+                    0.42f - 0.5f * std::cos(2.0f * pi * x) + 0.08f * std::cos(4.0f * pi * x);
             }
             break;
 
         case WindowFunction::FlatTop:
             for (std::size_t i = 0; i < n; ++i) {
                 const auto x = static_cast<float>(i) / static_cast<float>(n - 1);
-                window_[i] = 0.21557895f
-                           - 0.41663158f * std::cos(2.0f * pi * x)
-                           + 0.277263158f * std::cos(4.0f * pi * x)
-                           - 0.083578947f * std::cos(6.0f * pi * x)
-                           + 0.006947368f * std::cos(8.0f * pi * x);
+                window_[i] = 0.21557895f - 0.41663158f * std::cos(2.0f * pi * x) +
+                             0.277263158f * std::cos(4.0f * pi * x) -
+                             0.083578947f * std::cos(6.0f * pi * x) +
+                             0.006947368f * std::cos(8.0f * pi * x);
             }
             break;
     }
@@ -195,8 +183,7 @@ std::size_t FFTProcessor::compute(std::span<const float> samples, std::span<floa
 
 std::size_t FFTProcessor::frequency_to_bin(float frequency, float sample_rate) const noexcept {
     const auto bin = static_cast<std::size_t>(
-        frequency * static_cast<float>(config_.fft_size) / sample_rate + 0.5f
-    );
+        frequency * static_cast<float>(config_.fft_size) / sample_rate + 0.5f);
     return std::min(bin, bin_count() - 1);
 }
 
@@ -210,14 +197,11 @@ void FFTProcessor::set_config(const FFTConfig& config) {
     compute_window();
 }
 
-std::vector<std::pair<std::size_t, std::size_t>> compute_log_bands(
-    std::size_t bin_count,
-    std::size_t num_bars,
-    float min_freq,
-    float max_freq,
-    float sample_rate,
-    std::size_t fft_size
-) {
+std::vector<std::pair<std::size_t, std::size_t>> compute_log_bands(std::size_t bin_count,
+                                                                   std::size_t num_bars,
+                                                                   float min_freq, float max_freq,
+                                                                   float sample_rate,
+                                                                   std::size_t fft_size) {
     std::vector<std::pair<std::size_t, std::size_t>> bands;
     bands.reserve(num_bars);
 
@@ -226,9 +210,8 @@ std::vector<std::pair<std::size_t, std::size_t>> compute_log_bands(
     const float log_step = (log_max - log_min) / static_cast<float>(num_bars);
 
     auto freq_to_bin = [&](float freq) -> std::size_t {
-        const auto bin = static_cast<std::size_t>(
-            freq * static_cast<float>(fft_size) / sample_rate
-        );
+        const auto bin =
+            static_cast<std::size_t>(freq * static_cast<float>(fft_size) / sample_rate);
         return std::clamp(bin, std::size_t{0}, bin_count - 1);
     };
 

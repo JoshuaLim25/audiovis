@@ -18,14 +18,9 @@ namespace audiovis {
 /// slower terminals.
 class TerminalRenderer {
 public:
-    TerminalRenderer()
-        : running_{true} {
-        init_ncurses();
-    }
+    TerminalRenderer() : running_{true} { init_ncurses(); }
 
-    ~TerminalRenderer() {
-        shutdown_ncurses();
-    }
+    ~TerminalRenderer() { shutdown_ncurses(); }
 
     /// Main render loop. Blocks until user quits (q or Ctrl+C).
     void run(SpectrumAnalyzer& analyzer) {
@@ -64,18 +59,16 @@ public:
         analyzer.stop();
     }
 
-    void stop() {
-        running_ = false;
-    }
+    void stop() { running_ = false; }
 
 private:
     void init_ncurses() {
         initscr();
         cbreak();
         noecho();
-        curs_set(0);          // Hide cursor
-        nodelay(stdscr, TRUE); // Non-blocking getch
-        keypad(stdscr, TRUE);  // Enable special keys
+        curs_set(0);            // Hide cursor
+        nodelay(stdscr, TRUE);  // Non-blocking getch
+        keypad(stdscr, TRUE);   // Enable special keys
 
         // Initialize colors if supported
         if (has_colors()) {
@@ -96,9 +89,7 @@ private:
         getmaxyx(stdscr, term_height_, term_width_);
     }
 
-    void shutdown_ncurses() {
-        endwin();
-    }
+    void shutdown_ncurses() { endwin(); }
 
     void handle_resize() {
         endwin();
@@ -130,8 +121,7 @@ private:
         // Calculate bar width and spacing
         const auto num_bands = data.magnitudes.size();
         if (num_bands == 0) {
-            mvprintw(header_lines + viz_height / 2, (term_width_ - 20) / 2,
-                     "Waiting for audio...");
+            mvprintw(header_lines + viz_height / 2, (term_width_ - 20) / 2, "Waiting for audio...");
             refresh();
             return;
         }
@@ -164,12 +154,18 @@ private:
                 // Color based on height (gradient from blue to red)
                 int color_pair = 1;
                 if (has_color_) {
-                    const float height_ratio = static_cast<float>(y) / static_cast<float>(viz_height - 1);
-                    if (height_ratio > 0.9f) color_pair = 5;       // Red (loud)
-                    else if (height_ratio > 0.7f) color_pair = 4;  // Yellow
-                    else if (height_ratio > 0.5f) color_pair = 3;  // Green
-                    else if (height_ratio > 0.3f) color_pair = 2;  // Cyan
-                    else color_pair = 1;                           // Blue (quiet)
+                    const float height_ratio =
+                        static_cast<float>(y) / static_cast<float>(viz_height - 1);
+                    if (height_ratio > 0.9f)
+                        color_pair = 5;  // Red (loud)
+                    else if (height_ratio > 0.7f)
+                        color_pair = 4;  // Yellow
+                    else if (height_ratio > 0.5f)
+                        color_pair = 3;  // Green
+                    else if (height_ratio > 0.3f)
+                        color_pair = 2;  // Cyan
+                    else
+                        color_pair = 1;  // Blue (quiet)
 
                     attron(COLOR_PAIR(color_pair));
                 }
@@ -205,8 +201,7 @@ private:
 
         // Footer info
         mvprintw(term_height_ - 1, 1, "RMS: %.2f  Peak: %.2f  Captured: %lluk  Overruns: %llu",
-                 static_cast<double>(data.rms_level),
-                 static_cast<double>(data.peak_level),
+                 static_cast<double>(data.rms_level), static_cast<double>(data.peak_level),
                  static_cast<unsigned long long>(stats.frames_captured / 1000),
                  static_cast<unsigned long long>(stats.overruns));
 
@@ -236,28 +231,20 @@ int main() {
     try {
         // Configure analyzer with reasonable defaults
         audiovis::AudioConfig audio_cfg{
-            .sample_rate = 48000,
-            .buffer_frames = 512,
-            .channels = 1,
-            .ring_buffer_seconds = 0.5f
-        };
+            .sample_rate = 48000, .buffer_frames = 512, .channels = 1, .ring_buffer_seconds = 0.5f};
 
-        audiovis::FFTConfig fft_cfg{
-            .fft_size = 2048,
-            .window = audiovis::WindowFunction::Hann,
-            .use_magnitude_db = true,
-            .db_floor = -60.0f,
-            .db_ceiling = 0.0f
-        };
+        audiovis::FFTConfig fft_cfg{.fft_size = 2048,
+                                    .window = audiovis::WindowFunction::Hann,
+                                    .use_magnitude_db = true,
+                                    .db_floor = -60.0f,
+                                    .db_ceiling = 0.0f};
 
-        audiovis::AnalyzerConfig analyzer_cfg{
-            .num_bands = 64,
-            .min_frequency = 20.0f,
-            .max_frequency = 16000.0f,
-            .smoothing_factor = 0.6f,
-            .peak_decay_rate = 0.92f,
-            .logarithmic_frequency = true
-        };
+        audiovis::AnalyzerConfig analyzer_cfg{.num_bands = 64,
+                                              .min_frequency = 20.0f,
+                                              .max_frequency = 16000.0f,
+                                              .smoothing_factor = 0.6f,
+                                              .peak_decay_rate = 0.92f,
+                                              .logarithmic_frequency = true};
 
         audiovis::SpectrumAnalyzer analyzer{audio_cfg, fft_cfg, analyzer_cfg};
         audiovis::TerminalRenderer renderer;

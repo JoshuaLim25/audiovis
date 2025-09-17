@@ -16,9 +16,8 @@ PortAudioGuard::PortAudioGuard() {
         PaError err = Pa_Initialize();
         if (err != paNoError) {
             ref_count_.fetch_sub(1, std::memory_order_acq_rel);
-            throw std::runtime_error(
-                std::string("Failed to initialize PortAudio: ") + Pa_GetErrorText(err)
-            );
+            throw std::runtime_error(std::string("Failed to initialize PortAudio: ") +
+                                     Pa_GetErrorText(err));
         }
     }
 }
@@ -32,14 +31,11 @@ PortAudioGuard::~PortAudioGuard() {
 // Global guard ensures PortAudio stays initialized for duration of program
 static PortAudioGuard g_portaudio_guard;
 
-AudioCapture::AudioCapture(const AudioConfig& config)
-    : config_{config} {
-
+AudioCapture::AudioCapture(const AudioConfig& config) : config_{config} {
     // Calculate ring buffer size from duration
-    const auto buffer_samples = static_cast<std::size_t>(
-        config_.ring_buffer_seconds * static_cast<float>(config_.sample_rate) *
-        static_cast<float>(config_.channels)
-    );
+    const auto buffer_samples = static_cast<std::size_t>(config_.ring_buffer_seconds *
+                                                         static_cast<float>(config_.sample_rate) *
+                                                         static_cast<float>(config_.channels));
     ring_buffer_ = std::make_unique<RingBuffer<float>>(buffer_samples);
 
     // Get default input device info
@@ -63,21 +59,15 @@ AudioCapture::AudioCapture(const AudioConfig& config)
     input_params.hostApiSpecificStreamInfo = nullptr;
 
     // Open the stream
-    PaError err = Pa_OpenStream(
-        &stream_,
-        &input_params,
-        nullptr,  // No output
-        static_cast<double>(config_.sample_rate),
-        config_.buffer_frames,
-        paClipOff,  // Don't clip samples
-        &AudioCapture::audio_callback,
-        this
-    );
+    PaError err = Pa_OpenStream(&stream_, &input_params,
+                                nullptr,  // No output
+                                static_cast<double>(config_.sample_rate), config_.buffer_frames,
+                                paClipOff,  // Don't clip samples
+                                &AudioCapture::audio_callback, this);
 
     if (err != paNoError) {
-        throw std::runtime_error(
-            std::string("Failed to open audio stream: ") + Pa_GetErrorText(err)
-        );
+        throw std::runtime_error(std::string("Failed to open audio stream: ") +
+                                 Pa_GetErrorText(err));
     }
 }
 
@@ -95,9 +85,8 @@ void AudioCapture::start() {
 
     PaError err = Pa_StartStream(stream_);
     if (err != paNoError) {
-        throw std::runtime_error(
-            std::string("Failed to start audio stream: ") + Pa_GetErrorText(err)
-        );
+        throw std::runtime_error(std::string("Failed to start audio stream: ") +
+                                 Pa_GetErrorText(err));
     }
 
     running_.store(true, std::memory_order_release);
@@ -113,32 +102,22 @@ void AudioCapture::stop() {
 }
 
 AudioStats AudioCapture::stats() const noexcept {
-    return AudioStats{
-        .frames_captured = frames_captured_.load(std::memory_order_relaxed),
-        .overruns = overruns_.load(std::memory_order_relaxed),
-        .callback_count = callback_count_.load(std::memory_order_relaxed),
-        .peak_amplitude = peak_amplitude_.load(std::memory_order_relaxed)
-    };
+    return AudioStats{.frames_captured = frames_captured_.load(std::memory_order_relaxed),
+                      .overruns = overruns_.load(std::memory_order_relaxed),
+                      .callback_count = callback_count_.load(std::memory_order_relaxed),
+                      .peak_amplitude = peak_amplitude_.load(std::memory_order_relaxed)};
 }
 
-int AudioCapture::audio_callback(
-    const void* input,
-    void* /*output*/,
-    unsigned long frame_count,
-    const PaStreamCallbackTimeInfo* /*time_info*/,
-    PaStreamCallbackFlags status_flags,
-    void* user_data
-) {
+int AudioCapture::audio_callback(const void* input, void* /*output*/, unsigned long frame_count,
+                                 const PaStreamCallbackTimeInfo* /*time_info*/,
+                                 PaStreamCallbackFlags status_flags, void* user_data) {
     auto* self = static_cast<AudioCapture*>(user_data);
 
     // Cast input buffer to float samples
     const auto* samples = static_cast<const float*>(input);
     const auto sample_count = frame_count * self->config_.channels;
 
-    self->process_audio(
-        std::span<const float>{samples, sample_count},
-        status_flags
-    );
+    self->process_audio(std::span<const float>{samples, sample_count}, status_flags);
 
     return paContinue;
 }
@@ -158,8 +137,7 @@ void AudioCapture::process_audio(std::span<const float> samples, unsigned long s
     // Update peak using atomic max operation
     float current_peak = peak_amplitude_.load(std::memory_order_relaxed);
     while (peak > current_peak &&
-           !peak_amplitude_.compare_exchange_weak(
-               current_peak, peak, std::memory_order_relaxed)) {
+           !peak_amplitude_.compare_exchange_weak(current_peak, peak, std::memory_order_relaxed)) {
         // Retry if another update happened
     }
 

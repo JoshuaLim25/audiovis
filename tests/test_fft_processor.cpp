@@ -16,12 +16,8 @@ protected:
     static constexpr float kSampleRate = 48000.0f;
 
     /// Generates a pure sine wave at the specified frequency.
-    static std::vector<float> generate_sine(
-        float frequency,
-        float sample_rate,
-        std::size_t num_samples,
-        float amplitude = 1.0f
-    ) {
+    static std::vector<float> generate_sine(float frequency, float sample_rate,
+                                            std::size_t num_samples, float amplitude = 1.0f) {
         std::vector<float> samples(num_samples);
         const float omega = 2.0f * std::numbers::pi_v<float> * frequency / sample_rate;
 
@@ -112,16 +108,14 @@ TEST_F(FFTProcessorTest, DetectsSineFrequency) {
 }
 
 TEST_F(FFTProcessorTest, DistinguishesTwoFrequencies) {
-    FFTConfig config{
-        .fft_size = 2048,  // Higher resolution
-        .window = WindowFunction::Hann,
-        .use_magnitude_db = false
-    };
+    FFTConfig config{.fft_size = 2048,  // Higher resolution
+                     .window = WindowFunction::Hann,
+                     .use_magnitude_db = false};
     FFTProcessor proc{config};
 
     // Generate two sine waves
-    constexpr float freq1 = 440.0f;   // A4
-    constexpr float freq2 = 880.0f;   // A5 (octave above)
+    constexpr float freq1 = 440.0f;  // A4
+    constexpr float freq2 = 880.0f;  // A5 (octave above)
 
     auto sine1 = generate_sine(freq1, kSampleRate, 2048, 0.5f);
     auto sine2 = generate_sine(freq2, kSampleRate, 2048, 0.5f);
@@ -147,13 +141,11 @@ TEST_F(FFTProcessorTest, DistinguishesTwoFrequencies) {
 }
 
 TEST_F(FFTProcessorTest, DecibelConversion) {
-    FFTConfig config{
-        .fft_size = kDefaultFFTSize,
-        .window = WindowFunction::Rectangular,
-        .use_magnitude_db = true,
-        .db_floor = -60.0f,
-        .db_ceiling = 0.0f
-    };
+    FFTConfig config{.fft_size = kDefaultFFTSize,
+                     .window = WindowFunction::Rectangular,
+                     .use_magnitude_db = true,
+                     .db_floor = -60.0f,
+                     .db_ceiling = 0.0f};
     FFTProcessor proc{config};
 
     // Full-scale sine should produce magnitude near 1.0 (normalized from 0 dB)
@@ -169,13 +161,11 @@ TEST_F(FFTProcessorTest, DecibelConversion) {
 }
 
 TEST_F(FFTProcessorTest, SilenceProducesLowMagnitudes) {
-    FFTConfig config{
-        .fft_size = kDefaultFFTSize,
-        .window = WindowFunction::Hann,
-        .use_magnitude_db = true,
-        .db_floor = -80.0f,
-        .db_ceiling = 0.0f
-    };
+    FFTConfig config{.fft_size = kDefaultFFTSize,
+                     .window = WindowFunction::Hann,
+                     .use_magnitude_db = true,
+                     .db_floor = -80.0f,
+                     .db_ceiling = 0.0f};
     FFTProcessor proc{config};
 
     std::vector<float> silence(kDefaultFFTSize, 0.0f);
@@ -193,18 +183,13 @@ TEST_F(FFTProcessorTest, WindowFunctionAffectsLeakage) {
     // Rectangular window has more spectral leakage than Hann
     auto samples = generate_sine(1000.0f, kSampleRate, kDefaultFFTSize);
 
-    FFTConfig rect_config{
-        .fft_size = kDefaultFFTSize,
-        .window = WindowFunction::Rectangular,
-        .use_magnitude_db = false
-    };
+    FFTConfig rect_config{.fft_size = kDefaultFFTSize,
+                          .window = WindowFunction::Rectangular,
+                          .use_magnitude_db = false};
     FFTProcessor rect_proc{rect_config};
 
     FFTConfig hann_config{
-        .fft_size = kDefaultFFTSize,
-        .window = WindowFunction::Hann,
-        .use_magnitude_db = false
-    };
+        .fft_size = kDefaultFFTSize, .window = WindowFunction::Hann, .use_magnitude_db = false};
     FFTProcessor hann_proc{hann_config};
 
     std::vector<float> rect_mags(rect_proc.bin_count());
@@ -248,14 +233,7 @@ TEST_F(FFTProcessorTest, LogBandMappingCoversBins) {
     constexpr std::size_t bin_count = fft_size / 2 + 1;
     constexpr std::size_t num_bars = 32;
 
-    auto bands = compute_log_bands(
-        bin_count,
-        num_bars,
-        20.0f,
-        20000.0f,
-        kSampleRate,
-        fft_size
-    );
+    auto bands = compute_log_bands(bin_count, num_bars, 20.0f, 20000.0f, kSampleRate, fft_size);
 
     EXPECT_EQ(bands.size(), num_bars);
 

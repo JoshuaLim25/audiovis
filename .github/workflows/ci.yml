@@ -33,10 +33,8 @@ jobs:
           sudo apt-get install -y \
             cmake \
             ninja-build \
-            libportaudio2 \
-            libportaudio-dev \
+            portaudio19-dev \
             libfftw3-dev \
-            libfftw3-single3 \
             libncursesw5-dev \
             ${{ matrix.compiler == 'gcc' && 'g++-13' || 'clang-17' }}
 
@@ -71,7 +69,7 @@ jobs:
             ninja-build \
             clang-17 \
             clang-tidy-17 \
-            libportaudio-dev \
+            portaudio19-dev \
             libfftw3-dev \
             libncursesw5-dev
 
@@ -117,7 +115,7 @@ jobs:
             cmake \
             ninja-build \
             clang-17 \
-            libportaudio-dev \
+            portaudio19-dev \
             libfftw3-dev \
             libncursesw5-dev
 

@@ -6,15 +6,11 @@
 
 namespace audiovis {
 
-SpectrumAnalyzer::SpectrumAnalyzer(
-    const AudioConfig& audio_config,
-    const FFTConfig& fft_config,
-    const AnalyzerConfig& analyzer_config
-)
-    : audio_{std::make_unique<AudioCapture>(audio_config)}
-    , fft_{std::make_unique<FFTProcessor>(fft_config)}
-    , analyzer_config_{analyzer_config} {
-
+SpectrumAnalyzer::SpectrumAnalyzer(const AudioConfig& audio_config, const FFTConfig& fft_config,
+                                   const AnalyzerConfig& analyzer_config)
+    : audio_{std::make_unique<AudioCapture>(audio_config)},
+      fft_{std::make_unique<FFTProcessor>(fft_config)},
+      analyzer_config_{analyzer_config} {
     // Pre-allocate buffers
     sample_buffer_.resize(fft_->fft_size());
     magnitude_buffer_.resize(fft_->bin_count());
@@ -41,10 +37,11 @@ bool SpectrumAnalyzer::is_running() const noexcept {
 }
 
 void SpectrumAnalyzer::set_config(const AnalyzerConfig& config) {
-    const bool bands_changed = config.num_bands != analyzer_config_.num_bands ||
-                               config.min_frequency != analyzer_config_.min_frequency ||
-                               config.max_frequency != analyzer_config_.max_frequency ||
-                               config.logarithmic_frequency != analyzer_config_.logarithmic_frequency;
+    const bool bands_changed =
+        config.num_bands != analyzer_config_.num_bands ||
+        config.min_frequency != analyzer_config_.min_frequency ||
+        config.max_frequency != analyzer_config_.max_frequency ||
+        config.logarithmic_frequency != analyzer_config_.logarithmic_frequency;
 
     analyzer_config_ = config;
 
@@ -58,13 +55,8 @@ void SpectrumAnalyzer::set_config(const AnalyzerConfig& config) {
 void SpectrumAnalyzer::recompute_band_mapping() {
     if (analyzer_config_.logarithmic_frequency) {
         band_bins_ = compute_log_bands(
-            fft_->bin_count(),
-            analyzer_config_.num_bands,
-            analyzer_config_.min_frequency,
-            analyzer_config_.max_frequency,
-            sample_rate(),
-            fft_->fft_size()
-        );
+            fft_->bin_count(), analyzer_config_.num_bands, analyzer_config_.min_frequency,
+            analyzer_config_.max_frequency, sample_rate(), fft_->fft_size());
     } else {
         // Linear frequency mapping
         band_bins_.clear();
@@ -132,10 +124,8 @@ SpectrumData SpectrumAnalyzer::update() {
     result.peak_level = peak;
 
     // Compute FFT
-    fft_->compute(
-        {sample_buffer_.data(), read_count},
-        {magnitude_buffer_.data(), magnitude_buffer_.size()}
-    );
+    fft_->compute({sample_buffer_.data(), read_count},
+                  {magnitude_buffer_.data(), magnitude_buffer_.size()});
 
     // Map to display bands and apply smoothing
     for (std::size_t i = 0; i < analyzer_config_.num_bands; ++i) {
@@ -143,7 +133,8 @@ SpectrumData SpectrumAnalyzer::update() {
 
         // Temporal smoothing (exponential moving average)
         const float alpha = 1.0f - analyzer_config_.smoothing_factor;
-        smoothed_magnitudes_[i] = alpha * raw + analyzer_config_.smoothing_factor * smoothed_magnitudes_[i];
+        smoothed_magnitudes_[i] =
+            alpha * raw + analyzer_config_.smoothing_factor * smoothed_magnitudes_[i];
 
         // Peak hold with decay
         if (smoothed_magnitudes_[i] > peak_values_[i]) {
